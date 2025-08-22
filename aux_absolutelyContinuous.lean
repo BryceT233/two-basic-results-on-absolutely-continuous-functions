@@ -51,7 +51,7 @@ theorem absolutelyContinuous_FTC (g : ℝ → ℂ) (hg : ∀ a b, IntervalIntegr
     simp [Set.ext_iff] at u'_range
     let u' := u ∘ Nat.nth (fun n => u n ≠ x)
     have u'ne := Nat.nth_mem_of_infinite aux
-  -- Define a center function $w$ and a radius function $δ$, prove two auxillary lemma that helps specializing the Lebesgue's Differentiation theorem `h`
+  -- Define a center function $w$ and a radius function $δ$, prove two auxillary lemmas that help specializing the Lebesgue's Differentiation theorem `h`
     let w : ℕ → ℝ := fun n => (x + u' n) / 2
     let δ : ℕ → ℝ := fun n => |x - u' n| / 2
     have aux_δ : Tendsto δ atTop (nhdsWithin 0 (Set.Ioi 0)) := by
