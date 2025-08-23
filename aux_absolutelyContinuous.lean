@@ -70,7 +70,7 @@ theorem absolutelyContinuous_FTC (g : ℝ → ℂ) (hg : ∀ a b, IntervalIntegr
       simp [w, δ, Real.dist_eq]; use 0; simp
       intro; ring_nf; field_simp
       norm_num [abs_div, ← sub_eq_add_neg]
-  -- Specialize `h` to $w$ and $δ$, them simplify `h`
+  -- Specialize `h` to $w$ and $δ$, then simplify `h`
     specialize h w δ aux_δ aux'_wδ
     simp [w, δ, Metric.tendsto_atTop, Metric.closedBall, Real.dist_eq, average] at h
     simp only [abs_le, le_sub_iff_add_le, sub_le_iff_le_add, ← Set.mem_Icc] at h
