@@ -23,56 +23,67 @@ theorem absolutelyContinuous_FTC (g : ℝ → ℂ) (hg : ∀ a b, IntervalIntegr
   rw [eq_iff_le_not_lt]; constructor
   -- Prove that the goal holds true for all Lebesgue points of $g$
   · rw [← avg]; apply measure_mono
-    rw [Set.subset_def]; intro x; simp; contrapose!
-    intro h; specialize h ℕ atTop
+    rw [Set.subset_def]; intro x
+    simp only [Set.mem_setOf_eq, one_mul, Metric.mem_closedBall, not_forall, exists_prop]
+    contrapose!; intro h; specialize h ℕ atTop
   -- Rewrite the derivative goal to a limit goal of a sequence $u$
-    simp [hasDerivAt_iff_tendsto]; apply tendsto_of_seq_tendsto
-    intro u hu; simp [Metric.tendsto_atTop]
-    simp [Metric.tendsto_atTop, Real.dist_eq] at hu
+    simp only [hasDerivAt_iff_tendsto, Real.norm_eq_abs, Complex.real_smul, Complex.ofReal_sub]
+    apply tendsto_of_seq_tendsto
+    intro u hu; simp only [Metric.tendsto_atTop, gt_iff_lt, ge_iff_le, Function.comp_apply,
+      dist_zero_right, norm_mul, norm_inv, Real.norm_eq_abs, abs_abs]
+    simp only [Metric.tendsto_atTop, gt_iff_lt, ge_iff_le, Real.dist_eq] at hu
     by_cases aux : (setOf fun n => u n ≠ x).Finite
     -- If $u_n ≠ x$ holds true for only finitely many $n$'s, the goal is trivial since $u$ is eventually a constant sequence
     · suffices : ∃ N, ∀ n ≥ N, u n = x
       · rcases this with ⟨N, hN⟩; intros
-        use N; intro n nge; simp [← hN n nge]
+        use N; intro n nge
+        simp only [← hN n nge, sub_self, abs_zero, inv_zero, zero_mul, norm_zero, mul_zero]
         assumption
       by_cases h : {n | u n ≠ x} = ∅
-      · simp [Set.ext_iff] at h
+      · simp only [ne_eq, Set.ext_iff, Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false,
+        Decidable.not_not] at h
         simp [h]
       rw [← ne_eq, ← Set.nonempty_iff_ne_empty] at h
-      replace h : aux.toFinset.Nonempty := by simp; exact h
+      replace h : aux.toFinset.Nonempty := by
+        simp only [ne_eq, Set.Finite.toFinset_nonempty]; exact h
       let m := aux.toFinset.max' h
-      use m+1; intro n nge; suffices : n ∉ aux.toFinset
-      · simp at this; exact this
+      use m + 1; intro n nge; suffices : n ∉ aux.toFinset
+      · simp only [ne_eq, Set.Finite.mem_toFinset, Set.mem_setOf_eq, Decidable.not_not] at this
+        exact this
       revert nge; contrapose!; intro h
       have := Finset.le_max' aux.toFinset _ h; omega
   -- If there are infinitely many terms $u_n ≠ x$, denote this subsequence by $u'$
     rw [← Set.Infinite] at aux
     have u'_range := Nat.range_nth_of_infinite aux
-    simp [Set.ext_iff] at u'_range
+    simp only [ne_eq, Set.ext_iff, Set.mem_range, Set.mem_setOf_eq] at u'_range
     let u' := u ∘ Nat.nth (fun n => u n ≠ x)
     have u'ne := Nat.nth_mem_of_infinite aux
-  -- Define a center function $w$ and a radius function $δ$, prove two auxillary lemmas that help specializing the Lebesgue's Differentiation theorem `h`
+  -- Define a center function $w$ and a radius function $δ$, prove two auxillary lemma that helps specializing the Lebesgue's Differentiation theorem `h`
     let w : ℕ → ℝ := fun n => (x + u' n) / 2
     let δ : ℕ → ℝ := fun n => |x - u' n| / 2
     have aux_δ : Tendsto δ atTop (nhdsWithin 0 (Set.Ioi 0)) := by
       rw [nhdsWithin, tendsto_inf]; constructor
       · rw [Metric.tendsto_atTop]; intro ε εpos
-        simp [δ, u']; specialize hu (2 * ε) (by positivity)
+        norm_num [δ, u']; specialize hu (2 * ε) (by positivity)
         rcases hu with ⟨N, hN⟩
         use N; intro n nge; rw [abs_sub_comm, div_lt_iff₀']
         apply hN; apply le_trans nge
         apply Nat.le_nth
         · intro; contradiction
         norm_num
-      simp [δ]; use 0; simp [u']; intro n
-      rw [sub_eq_zero, ← ne_eq]; symm; apply u'ne
+      simp [δ]; use 0; simp only [zero_le, ne_eq, Function.comp_apply, forall_const, u']
+      intro n; rw [sub_eq_zero, ← ne_eq]; symm; apply u'ne
     have aux'_wδ : ∀ᶠ (j : ℕ) in atTop, dist x (w j) ≤ δ j := by
-      simp [w, δ, Real.dist_eq]; use 0; simp
+      norm_num [w, δ, Real.dist_eq]; use 0
+      simp only [zero_le, forall_const]
       intro; ring_nf; field_simp
       norm_num [abs_div, ← sub_eq_add_neg]
-  -- Specialize `h` to $w$ and $δ$, then simplify `h`
+  -- Specialize `h` to $w$ and $δ$, them simplify `h`
     specialize h w δ aux_δ aux'_wδ
-    simp [w, δ, Metric.tendsto_atTop, Metric.closedBall, Real.dist_eq, average] at h
+    simp only [average, Metric.closedBall, Real.dist_eq, MeasurableSet.univ, Measure.restrict_apply,
+      Set.univ_inter, integral_smul_measure, ENNReal.toReal_inv, smul_eq_mul, Metric.tendsto_atTop,
+      gt_iff_lt, ge_iff_le, dist_zero_right, norm_mul, norm_inv, Real.norm_eq_abs,
+      ENNReal.abs_toReal, w, δ] at h
     simp only [abs_le, le_sub_iff_add_le, sub_le_iff_le_add, ← Set.mem_Icc] at h
     simp only [Set.setOf_mem_eq, Real.volume_Icc] at h
     ring_nf at h; field_simp at h
@@ -89,7 +100,8 @@ theorem absolutelyContinuous_FTC (g : ℝ → ℂ) (hg : ∀ a b, IntervalIntegr
     rw [← hm, (Nat.nth_strictMono aux).le_iff_le] at nge
     rw [← ne_eq, ne_iff_lt_or_gt] at h; rw [inv_mul_eq_div]
     simp [u'] at hN; rcases h with h|h
-    · rw [Set.Ioc_eq_empty]; simp
+    · rw [Set.Ioc_eq_empty]
+      simp only [Measure.restrict_empty, integral_zero_measure, zero_sub, norm_neg, abs_norm, gt_iff_lt]
       rw [abs_sub_comm]; specialize hN m nge
       rw [hm, abs_eq_self.mpr, abs_eq_self.mpr] at hN
       ring_nf at hN; rw [mul_comm, inv_mul_eq_div] at hN
@@ -99,8 +111,9 @@ theorem absolutelyContinuous_FTC (g : ℝ → ℂ) (hg : ∀ a b, IntervalIntegr
         apply norm_integral_le_integral_norm
       · apply le_abs_self
       positivity
-    nth_rw 2 [Set.Ioc_eq_empty]; simp; specialize hN m nge
-    rw [hm, abs_eq_self.mpr, abs_eq_neg_self.mpr] at hN
+    nth_rw 2 [Set.Ioc_eq_empty]
+    simp only [Measure.restrict_empty, integral_zero_measure, sub_zero, abs_norm, gt_iff_lt]
+    specialize hN m nge; rw [hm, abs_eq_self.mpr, abs_eq_neg_self.mpr] at hN
     ring_nf at hN; rw [abs_eq_self.mpr]
     rw [← sub_eq_neg_add, mul_comm, inv_mul_eq_div] at hN
     apply lt_of_le_of_lt _ hN; gcongr
@@ -203,7 +216,8 @@ theorem absolutelyContinuous_integration_by_parts (f g : ℝ → ℂ) (a b : ℝ
     (df : ∀ x, f x = ∫ t in a..x, g t) : ∀ ψ : ℝ → ℂ, ContDiff ℝ 1 ψ → ∫ t in a..b, f t * deriv ψ t
     = f b * ψ b - ∫ t in a..b, g t * ψ t := by
   intro ψ hψ; rw [df]; simp only [intervalIntegral]
-  simp [show Set.Ioc b a = ∅ by apply Set.Ioc_eq_empty; linarith only [aleb]]
+  simp only [show Set.Ioc b a = ∅ by apply Set.Ioc_eq_empty; linarith only [aleb],
+    Measure.restrict_empty, integral_zero_measure, sub_zero]
   rw [← integral_mul_const, ← integral_sub, ← integral_Icc_eq_integral_Ioc, ← integral_Icc_eq_integral_Ioc]
   simp only [← mul_sub]; symm; calc
     _ = ∫ (x : ℝ) in Set.Icc a b, g x * ∫ y in Set.Icc x b, deriv ψ y := by
@@ -213,7 +227,8 @@ theorem absolutelyContinuous_integration_by_parts (f g : ℝ → ℂ) (a b : ℝ
         have : Set.Ioc b y = ∅ := by
           apply Set.Ioc_eq_empty; rw [Set.mem_Icc] at hy
           linarith only [hy.right]
-        simp [this, ← integral_Icc_eq_integral_Ioc]
+        simp only [← integral_Icc_eq_integral_Ioc, this, Measure.restrict_empty,
+          integral_zero_measure, sub_zero]
         · intros; apply hψ.differentiable; rfl
         · apply Continuous.intervalIntegrable
           apply hψ.continuous_deriv; rfl
@@ -226,7 +241,8 @@ theorem absolutelyContinuous_integration_by_parts (f g : ℝ → ℂ) (a b : ℝ
         have : Set.Ioc x a = ∅ := by
           apply Set.Ioc_eq_empty; rw [Set.mem_Icc] at hx
           push_neg; exact hx.left
-        simp [this, integral_Icc_eq_integral_Ioc]
+        simp only [integral_Icc_eq_integral_Ioc, this, Measure.restrict_empty,
+          integral_zero_measure, sub_zero]
       · apply hg.integrableOn_isCompact; exact isCompact_Icc
       · apply Continuous.integrableOn_Icc
         apply hψ.continuous_deriv; rfl
