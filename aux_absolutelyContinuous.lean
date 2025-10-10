@@ -71,7 +71,9 @@ theorem absolutelyContinuous_FTC (g : ℝ → ℂ) (hg : ∀ a b, IntervalIntegr
         apply Nat.le_nth
         · intro; contradiction
         norm_num
-      simp [δ]; use 0; simp only [zero_le, ne_eq, Function.comp_apply, forall_const, u']
+      simp only [tendsto_principal, Set.mem_Ioi, Nat.ofNat_pos, div_pos_iff_of_pos_right, abs_pos,
+        ne_eq, eventually_atTop, ge_iff_le, δ]
+      use 0; simp only [zero_le, ne_eq, Function.comp_apply, forall_const, u']
       intro n; rw [sub_eq_zero, ← ne_eq]; symm; apply u'ne
     have aux'_wδ : ∀ᶠ (j : ℕ) in atTop, dist x (w j) ≤ δ j := by
       norm_num [w, δ, Real.dist_eq]; use 0
@@ -95,11 +97,12 @@ theorem absolutelyContinuous_FTC (g : ℝ → ℂ) (hg : ∀ a b, IntervalIntegr
     rw [zero_sub, intervalIntegral, neg_sub, ← intervalIntegral]
     have : ∫ u in x..(u n), g x = (u n - x) * g x := by simp
     rw [← this, ← intervalIntegral.integral_sub, intervalIntegral]
-    by_cases h : u n = x; simp [h]; exact εpos
+    by_cases h : u n = x; simpa [h]
     obtain ⟨m, hm⟩ := (u'_range n).mpr h
     rw [← hm, (Nat.nth_strictMono aux).le_iff_le] at nge
     rw [← ne_eq, ne_iff_lt_or_gt] at h; rw [inv_mul_eq_div]
-    simp [u'] at hN; rcases h with h|h
+    simp only [ne_eq, Function.comp_apply, abs_nonneg, ENNReal.toReal_ofReal, u'] at hN
+    rcases h with h|h
     · rw [Set.Ioc_eq_empty]
       simp only [Measure.restrict_empty, integral_zero_measure, zero_sub, norm_neg, abs_norm, gt_iff_lt]
       rw [abs_sub_comm]; specialize hN m nge
@@ -132,18 +135,16 @@ lemma integral_integral_flip (f g : ℝ → ℂ) (a b : ℝ) (hf : IntegrableOn 
   have aux_mea : MeasurableSet {p : ℝ × ℝ | p.1 ∈ Set.Icc a b ∧ p.2 ∈ Set.Icc p.1 b} := by
     have : {p | p.1 ∈ Set.Icc a b ∧ p.2 ∈ Set.Icc p.1 b} = Set.Icc a b ×ˢ Set.Icc a b ∩
     (fun p => p.2 - p.1) ⁻¹' (Set.Ici 0) := by
-      simp [Set.ext_iff]; intro x y; constructor
-      · rintro ⟨⟨⟩,⟨⟩⟩; split_ands; any_goals assumption
-        linarith
-      rintro ⟨⟨⟨⟩,⟨⟩⟩⟩; split_ands; all_goals assumption
+      simp only [Set.mem_Icc, Set.Icc_prod_Icc, Set.ext_iff, Set.mem_setOf_eq, Set.mem_inter_iff,
+        Set.mem_preimage, Set.mem_Ici, sub_nonneg, Prod.forall, Prod.mk_le_mk]
+      grind
     rw [this]; measurability
   have aux_mea' : MeasurableSet {p : ℝ × ℝ | p.1 ∈ Set.Icc a b ∧ p.2 ∈ Set.Icc a p.1} := by
     have : {p | p.1 ∈ Set.Icc a b ∧ p.2 ∈ Set.Icc a p.1} = Set.Icc a b ×ˢ Set.Icc a b ∩
     (fun p => p.2 - p.1) ⁻¹' (Set.Iic 0) := by
-      simp [Set.ext_iff]; intro x y; constructor
-      · rintro ⟨⟨⟩,⟨⟩⟩; split_ands; any_goals assumption
-        linarith
-      rintro ⟨⟨⟨⟩,⟨⟩⟩⟩; split_ands; all_goals assumption
+      simp only [Set.mem_Icc, Set.Icc_prod_Icc, Set.ext_iff, Set.mem_setOf_eq, Set.mem_inter_iff,
+        Set.mem_preimage, Set.mem_Iic, tsub_le_iff_right, zero_add, Prod.forall, Prod.mk_le_mk]
+      grind
     rw [this]; measurability
   calc
   _ = ∫ (p : ℝ × ℝ) in {p | p.1 ∈ Set.Icc a b ∧ p.2 ∈ Set.Icc p.1 b}, f p.1 * g p.2 ∂(volume.restrict (Set.Icc a b)).prod (volume.restrict (Set.Icc a b)) := by
@@ -155,18 +156,16 @@ lemma integral_integral_flip (f g : ℝ → ℂ) (a b : ℝ) (hf : IntegrableOn 
       apply integral_congr_ae
       · rw [EventuallyEq]; apply ae_of_all
         intro y; rw [Set.indicator_apply]; split_ifs with hy
-        · rw [Set.indicator_of_mem, Set.indicator_of_mem]; simp only [Set.mem_setOf_eq]
-          exact ⟨hx, hy⟩
-          · rw [Set.mem_Icc] at *
-            exact ⟨by linarith only [hx.left, hy.left], hy.right⟩
+        · rw [Set.indicator_of_mem, Set.indicator_of_mem]
+          all_goals grind
         rw [Set.indicator_apply]; split_ifs with hy'
-        · rw [Set.indicator_of_notMem]; simp only [Set.mem_setOf_eq, not_and]
-          intro; exact hy
+        · rw [Set.indicator_of_notMem]
+          grind
         rfl
       all_goals exact measurableSet_Icc
     · apply Integrable.indicator; apply Integrable.mul_prod
-      · rw [← IntegrableOn]; exact hf
-      · rw [← IntegrableOn]; exact hg
+      · rwa [← IntegrableOn]
+      · rwa [← IntegrableOn]
       · exact aux_mea
     exact aux_mea
   _ = ∫ (p : ℝ × ℝ) in {p | p.1 ∈ Set.Icc a b ∧ p.2 ∈ Set.Icc a p.1}, f p.2 * g p.1 ∂(volume.restrict (Set.Icc a b)).prod (volume.restrict (Set.Icc a b)) := by
@@ -174,10 +173,10 @@ lemma integral_integral_flip (f g : ℝ → ℂ) (a b : ℝ) (hf : IntegrableOn 
     set μ := (volume.restrict (Set.Icc a b)).prod (volume.restrict (Set.Icc a b))
     have swap_meaP: MeasurePreserving Prod.swap μ μ := Measure.measurePreserving_swap
     have : {p | p.1 ∈ Set.Icc a b ∧ p.2 ∈ Set.Icc p.1 b} = Prod.swap '' {p | p.1 ∈ Set.Icc a b ∧ p.2 ∈ Set.Icc a p.1} := by
-      simp [Set.ext_iff, and_assoc]; intro x y
-      constructor; all_goals
-      rintro ⟨_,_,_,_⟩; split_ands
-      all_goals linarith
+      simp only [Set.mem_Icc, and_assoc, Set.ext_iff, Set.mem_setOf_eq, Set.mem_image, Prod.exists,
+        Prod.swap_prod_mk, exists_and_left, Prod.forall, Prod.mk.injEq, existsAndEq, true_and,
+        and_true]
+      grind
     rw [this, swap_meaP.setIntegral_image_emb]; simp
     · let e : Equiv (ℝ × ℝ) (ℝ × ℝ) := {
         toFun := Prod.swap
@@ -194,21 +193,17 @@ lemma integral_integral_flip (f g : ℝ → ℂ) (a b : ℝ) (hf : IntegrableOn 
       apply integral_congr_ae
       · rw [EventuallyEq]; apply ae_of_all
         intro y; rw [Set.indicator_apply]; split_ifs with hy
-        · rw [Set.indicator_of_mem, Set.indicator_of_mem]; simp only [Set.mem_setOf_eq]
-          exact ⟨hx, hy⟩
-          · rw [Set.mem_Icc] at *
-            exact ⟨hy.left, by linarith only [hx.right, hy.right]⟩
+        · rw [Set.indicator_of_mem, Set.indicator_of_mem];
+          all_goals grind
         rw [Set.indicator_apply]; split_ifs with hy'
-        · rw [Set.indicator_of_notMem]; simp only [Set.mem_setOf_eq, not_and]
-          intro; exact hy
+        · rw [Set.indicator_of_notMem]; grind
         rfl
       all_goals exact measurableSet_Icc
     apply Integrable.indicator
-    have : (fun p : ℝ × ℝ => f p.2 * g p.1) = fun p => g p.1 * f p.2 := by
-      ext; rw [mul_comm]
+    have : (fun p : ℝ × ℝ => f p.2 * g p.1) = fun p => g p.1 * f p.2 := by grind
     rw [this]; apply Integrable.mul_prod
-    · rw [← IntegrableOn]; exact hg
-    · rw [← IntegrableOn]; exact hf
+    · rwa [← IntegrableOn]
+    · rwa [← IntegrableOn]
     all_goals exact aux_mea'
 
 -- Integration-by-parts rule for absolutely continuous functions
@@ -238,9 +233,7 @@ theorem absolutelyContinuous_integration_by_parts (f g : ℝ → ℂ) (a b : ℝ
       apply setIntegral_congr_fun; exact measurableSet_Icc
       · intro x hx; simp only [mul_eq_mul_right_iff]
         left; rw [df, intervalIntegral]
-        have : Set.Ioc x a = ∅ := by
-          apply Set.Ioc_eq_empty; rw [Set.mem_Icc] at hx
-          push_neg; exact hx.left
+        have : Set.Ioc x a = ∅ := by grind
         simp only [integral_Icc_eq_integral_Ioc, this, Measure.restrict_empty,
           integral_zero_measure, sub_zero]
       · apply hg.integrableOn_isCompact; exact isCompact_Icc
