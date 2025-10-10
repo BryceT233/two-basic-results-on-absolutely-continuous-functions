@@ -219,9 +219,7 @@ theorem absolutelyContinuous_integration_by_parts (f g : ℝ → ℂ) (a b : ℝ
       apply setIntegral_congr_fun; exact measurableSet_Icc
       · intro y hy; simp only [mul_eq_mul_left_iff]; left
         rw [← intervalIntegral.integral_deriv_eq_sub, intervalIntegral]
-        have : Set.Ioc b y = ∅ := by
-          apply Set.Ioc_eq_empty; rw [Set.mem_Icc] at hy
-          linarith only [hy.right]
+        have : Set.Ioc b y = ∅ := by grind
         simp only [← integral_Icc_eq_integral_Ioc, this, Measure.restrict_empty,
           integral_zero_measure, sub_zero]
         · intros; apply hψ.differentiable; rfl
